@@ -15,8 +15,7 @@ class ApiTokenLoginRequest extends FormRequest
     {
         return [
             'email' => 'required|email',
-            'password' => 'required|min:6',
-            'token_name' => 'required'
+            'password' => 'required|min:6'
         ];
     }
 }

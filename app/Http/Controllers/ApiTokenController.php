@@ -9,12 +9,40 @@ use Illuminate\Support\Facades\Hash;
 
 class ApiTokenController extends Controller
 {
+    public function approveRegistration($id)
+    {
+        $user = User::find($id);
+
+        if (!$user || $user->status !== 'pending') {
+            return response()->json(['error' => 'Invalid user or user not pending approval'], 404);
+        }
+
+        $user->status = 'approved';
+        $user->save();
+
+        return response()->json(['message' => 'User approved successfully'], 200);
+    }
+
+    public function rejectRegistration($id)
+    {
+        $user = User::find($id);
+
+        if (!$user || $user->status !== 'pending') {
+            return response()->json(['error' => 'Invalid user or user not pending approval'], 404);
+        }
+
+        $user->status = 'rejected';
+        $user->save();
+
+        return response()->json(['message' => 'User rejected successfully'], 200);
+    }
 
     public function register(Request $request)
     {
         if (User::where('email', $request->email)->exists()) {
-            return response()->json(['error' => "User already register"], 409);
+            return response()->json(['error' => "User already registered"], 409);
         }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -23,7 +51,6 @@ class ApiTokenController extends Controller
             'type_organisation' => 'required|string|in:Centre,Association,Organisme',
             'telephone' => 'required|string|max:20',
             'role' => 'required|in:administrateur,membre',
-
         ]);
 
         $user = User::create([
@@ -34,11 +61,12 @@ class ApiTokenController extends Controller
             'type_organisation' => $request->type_organisation,
             'telephone' => $request->telephone,
             'role' => $request->role,
-
+            'status' => 'pending', // New administrators are pending approval
         ]);
 
-        return response()->json(['message' => 'Inscription réussie', 'user' => $user], 201);
+        return response()->json(['message' => 'Registration successful, awaiting approval', 'user' => $user], 201);
     }
+
     public function login(ApiTokenLoginRequest $request)
     {
         $user = User::where('email', $request->email)->first();
@@ -47,22 +75,41 @@ class ApiTokenController extends Controller
             return response()->json(['error' => "Invalid credentials"], 401);
         }
 
-        $user->tokens()->where('name', $request->token_name)->delete();
+        if ($user->status !== 'approved') {
+            return response()->json(['error' => 'Your account is not approved yet'], 403);
+        }
 
-        $token = $user->createToken($request->token_name);
-        // Abilities
-        //$token = $user->createToken($request->token_name, ['repo:view']);
+        // Generate a new token for the user
+        $token = $user->createToken('default')->plainTextToken;
 
-        return [
-            'token' => $token->plainTextToken,
-            'user' => $user
-        ];
+        return response()->json([
+            'token' => $token,
+            'user' => $user,
+        ], 200);
     }
+
 
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
 
-        return response(null, 204);
+        // Retourner une réponse JSON avec un message de succès
+        return response()->json(['message' => 'Déconnexion réussie'], 200);
     }
+    public function getUser(Request $request)
+    {
+        // Get the currently authenticated user
+        $user = $request->user();
+
+        return response()->json(['user' => $user], 200);
+    }
+    public function getAdministrators()
+{
+    // Récupérer tous les utilisateurs ayant le rôle d'administrateur
+    $administrators = User::where('role', 'administrateur')->get();
+
+    // Retourner une réponse JSON avec la liste des administrateurs
+    return response()->json(['administrators' => $administrators], 200);
+}
+
 }

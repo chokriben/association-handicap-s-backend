@@ -21,7 +21,8 @@ return new class extends Migration
             $table->enum('type_organisation', ['Centre', 'Association', 'Organisme']);
             $table->string('adresse')->nullable();
             $table->string('telephone');
-            $table->enum('role', ['administrateur', 'membre', 'visiteur']);
+            $table->enum('role', ['super_admin', 'administrateur', 'membre', 'visiteur']);
+            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending'); // New field
             $table->rememberToken();
             $table->timestamps();
         });

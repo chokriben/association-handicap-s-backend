@@ -26,7 +26,27 @@ class User extends Authenticatable
         'adresse',
         'telephone',
         'role',
+        'status'
     ];
+    public function organisations()
+    {
+        return $this->hasMany(Organisation::class);
+    }
+
+    public function publications()
+    {
+        return $this->hasMany(Publication::class);
+    }
+
+    public function messagesEnvoyés()
+    {
+        return $this->hasMany(Message::class, 'utilisateur_id_expediteur');
+    }
+
+    public function messagesReçus()
+    {
+        return $this->hasMany(Message::class, 'utilisateur_id_destinataire');
+    }
 
     /**
      * The attributes that should be hidden for serialization.

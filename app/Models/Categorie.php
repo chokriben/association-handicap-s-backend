@@ -5,28 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Organisation extends Model
+class Categorie extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'logo',
-        'date_creation',
-        'utilisateur_id',
+        // Ajoutez des champs si nécessaire pour la table principale
     ];
 
-    public function utilisateur()
+    public function translations()
     {
-        return $this->belongsTo(User::class);
+        return $this->hasMany(CategorieTranslation::class);
     }
 
     public function publications()
     {
         return $this->hasMany(Publication::class);
     }
-
-    public function translations()
-    {
-        return $this->hasMany(OrganisationTranslation::class);
-    }
 }
+
