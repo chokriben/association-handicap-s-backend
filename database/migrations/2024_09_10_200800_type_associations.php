@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('association_presentations', function (Blueprint $table) {
+        Schema::create('type_associations', function (Blueprint $table) {
             $table->id();
-            $table->timestamps();
+            $table->timestamps(); 
         });
     }
 
@@ -22,6 +22,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('association_presentations');
+        Schema::dropIfExists('type_associations');
     }
 };

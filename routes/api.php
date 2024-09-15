@@ -2,14 +2,13 @@
 
 use App\Http\Controllers\ActualiteController;
 use App\Http\Controllers\ApiTokenController;
-use App\Http\Controllers\AssociationPresentationController;
-use App\Http\Controllers\CategorieController;
+use App\Http\Controllers\AssociationController;
 use App\Http\Controllers\EvenementController;
-use App\Http\Controllers\MessageController;
-use App\Http\Controllers\OrganisationController;
+
 use App\Http\Controllers\PublicationController;
 use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\ReceptionController;
+use App\Http\Controllers\TypeAssociationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -24,12 +23,15 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::post('/auth/login', [ApiTokenController::class, 'login']);
 Route::post('/auth/register', [ApiTokenController::class, 'register']);
+Route::middleware('auth:sanctum')->put('/profile', [ApiTokenController::class, 'updateProfile']);
 Route::middleware('auth:sanctum')->post('/auth/logout', [ApiTokenController::class, 'logout']);
 Route::middleware('auth:sanctum')->get('/user', [ApiTokenController::class, 'getUser']);
 Route::post('/approve-registration/{id}', [ApiTokenController::class, 'approveRegistration'])->middleware('auth:sanctum');
 Route::post('/reject-registration/{id}', [ApiTokenController::class, 'rejectRegistration'])->middleware('auth:sanctum');
 Route::get('/administrators', [ApiTokenController::class, 'getAdministrators'])->middleware('auth:sanctum');
 
+//api get users status
+Route::get('/users', [ApiTokenController::class, 'getUsersByStatus']);
 
 
  Route::middleware('api')->group(function () {
@@ -46,6 +48,13 @@ Route::middleware('api')->group(function () {
     Route::resource('receptions', ReceptionController::class);
 });
 
+// Route::middleware('api')->group(function () {
+//     Route::resource('associations', AssociationPresentationController::class);
+// });
+
 Route::middleware('api')->group(function () {
-    Route::resource('associations', AssociationPresentationController::class);
+    Route::resource('type_associations', TypeAssociationController::class);
+});
+Route::middleware('api')->group(function () {
+    Route::resource('associations', AssociationController::class);
 });

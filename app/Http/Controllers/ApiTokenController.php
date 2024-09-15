@@ -6,6 +6,8 @@ use App\Http\Requests\ApiTokenLoginRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use App\Notifications\UserApproved;
+use App\Notifications\UserRejected;
 
 class ApiTokenController extends Controller
 {
@@ -20,8 +22,12 @@ class ApiTokenController extends Controller
         $user->status = 'approved';
         $user->save();
 
-        return response()->json(['message' => 'User approved successfully'], 200);
+        // Envoyer l'email de notification
+        $user->notify(new UserApproved());
+
+        return response()->json(['message' => 'User approved successfully, email sent'], 200);
     }
+
 
     public function rejectRegistration($id)
     {
@@ -34,7 +40,10 @@ class ApiTokenController extends Controller
         $user->status = 'rejected';
         $user->save();
 
-        return response()->json(['message' => 'User rejected successfully'], 200);
+        // Envoyer l'email de notification
+        $user->notify(new UserRejected());
+
+        return response()->json(['message' => 'User rejected successfully, email sent'], 200);
     }
 
     public function register(Request $request)
@@ -104,12 +113,62 @@ class ApiTokenController extends Controller
         return response()->json(['user' => $user], 200);
     }
     public function getAdministrators()
-{
-    // Récupérer tous les utilisateurs ayant le rôle d'administrateur
-    $administrators = User::where('role', 'administrateur')->get();
+    {
+        // Récupérer tous les utilisateurs ayant le rôle d'administrateur
+        $administrators = User::where('role', 'administrateur')->get();
 
-    // Retourner une réponse JSON avec la liste des administrateurs
-    return response()->json(['administrators' => $administrators], 200);
-}
+        // Retourner une réponse JSON avec la liste des administrateurs
+        return response()->json(['administrators' => $administrators], 200);
+    }
+    public function updateProfile(Request $request)
+    {
+        // Récupérer l'utilisateur authentifié (administrateur)
+        $user = $request->user();
+
+        // Valider les nouvelles informations du profil
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'telephone' => 'required|string|max:20',
+            'adresse' => 'nullable|string|max:255', // Optionnel, l'adresse peut être nulle
+            'password' => 'nullable|string|min:8|confirmed', // Optionnel, seulement si l'utilisateur veut changer son mot de passe
+        ]);
+
+        // Mettre à jour les informations de l'utilisateur
+        $user->name = $request->name;
+        $user->email = $request->email;
+        $user->telephone = $request->telephone;
+        $user->adresse = $request->adresse;
+
+        // Si un nouveau mot de passe est fourni, le mettre à jour
+        if ($request->filled('password')) {
+            $user->password = Hash::make($request->password);
+        }
+
+        // Sauvegarder les modifications
+        $user->save();
+
+        // Retourner une réponse JSON avec un message de succès et les nouvelles données de l'utilisateur
+        return response()->json(['message' => 'Profile updated successfully', 'user' => $user], 200);
+    }
+    public function getUsersByStatus()
+    {
+        // Compter les utilisateurs par statut
+        $acceptedUsers = User::where('status', 'approved')->count();
+        $pendingUsers = User::where('status', 'pending')->count();
+        $rejectedUsers = User::where('status', 'rejected')->count();
+
+        // Compter tous les utilisateurs (indépendamment du statut)
+        $totalUsers = User::count();
+
+        // Retourner les résultats dans la réponse JSON
+        return response()->json([
+            'accepted' => $acceptedUsers,
+            'pending' => $pendingUsers,
+            'rejected' => $rejectedUsers,
+            'total' => $totalUsers, // Ajouter le nombre total d'utilisateurs
+        ]);
+    }
+
 
 }
