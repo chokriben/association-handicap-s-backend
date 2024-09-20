@@ -7,6 +7,8 @@ use App\Models\Reception;
 use Illuminate\Support\Facades\Validator;
 use Astrotomic\Translatable\Locales;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
+use PgSql\Lob;
 
 class ReceptionController  extends Controller
 {
@@ -33,57 +35,54 @@ class ReceptionController  extends Controller
     {
         // Validate incoming data, including translations
         $validatedData = $request->validate([
-            'nom_fr' => 'required|string|max:255',
-            'prenom_fr' => 'required|string',
-            'nom_en' => 'required|string|max:255',
-            'prenom_en' => 'required|string',
-            'nom_ar' => 'required|string|max:255',
-            'prenom_ar' => 'required|string',
-            'adresse_ar' => 'required|string',
-            'adresse_fr' => 'required|string',
-            'adresse_en' => 'required|string',
-            'message_ar' => 'required',
-            'message_fr' => 'required',
-            'message_en' => 'required',
-            'email' => 'required|email',
-            'num_postale' => 'required|string|max:10',
-
+            'association_id' => 'required|exists:associations,id',
+            'nom_fr' => 'nullable|string|max:255',
+            'prenom_fr' => 'nullable|string',
+            'nom_en' => 'nullable|string|max:255',
+            'prenom_en' => 'nullable|string',
+            'nom_ar' => 'nullable|string|max:255',
+            'prenom_ar' => 'nullable|string',
+            'adresse_ar' => 'nullable|string',
+            'adresse_fr' => 'nullable|string',
+            'adresse_en' => 'nullable|string',
+            'message_ar' => 'nullable|string',
+            'message_fr' => 'nullable|string',
+            'message_en' => 'nullable|string',
+            'email' => 'nullable|email',
+            'num_postale' => 'nullable|string|max:10'
         ]);
 
-        // Create a new Actualite with translations
-        $reception = new Reception();
 
-        // French translation
-        $reception->translateOrNew('fr')->nom = $validatedData['nom_fr'];
-        $reception->translateOrNew('fr')->message = $validatedData['message_fr'];
-        $reception->translateOrNew('fr')->prenom = $validatedData['prenom_fr'];
-        $reception->translateOrNew('fr')->adresse = $validatedData['adresse_fr'];
+        // Debugging: Check validated data
+        Log::info('Validated Data:', $validatedData);
 
-        // English translation
-        $reception->translateOrNew('en')->nom = $validatedData['nom_en'];
-        $reception->translateOrNew('en')->message = $validatedData['message_en'];
-        $reception->translateOrNew('en')->prenom = $validatedData['prenom_en'];
-        $reception->translateOrNew('en')->adresse = $validatedData['adresse_en'];
+        $reception = isset($validatedData['id']) ? Reception::find($validatedData['id']) : new Reception();
 
-        // Arabic translation
-        $reception->translateOrNew('ar')->nom = $validatedData['nom_ar'];
-        $reception->translateOrNew('ar')->adresse = $validatedData['adresse_ar'];
-        $reception->translateOrNew('ar')->prenom = $validatedData['prenom_ar'];
-        $reception->translateOrNew('ar')->message = $validatedData['message_ar'];
+        // Set additional attributes
+        $reception->association_id = $validatedData['association_id'];
+        $reception->email = $validatedData['email'] ;
+        $reception->num_postale = $validatedData['num_postale'] ;
 
+        $languages = ['fr', 'en', 'ar'];
+        $fields = ['adresse', 'message', 'nom', 'prenom'];
 
- // Set additional attributes
-        $reception->email = $validatedData['email'];
-       $reception->num_postale = $validatedData['num_postale'];
-        // Save the recep
+        foreach ($languages as $lang) {
+            foreach ($fields as $field) {
+                $fieldKey = "{$field}_{$lang}";
+                $reception->translateOrNew($lang)->$field = $validatedData[$fieldKey] ?? null;
+            }
+        }
+
+        // Save the reception
         $reception->save();
 
         return response()->json([
             'success' => true,
-            'message' => 'Actualité créée avec succès!',
+            'message' => 'reception créée avec succès!',
             'data' => $reception
         ], 201);
     }
+
 
     /**
      * Display the specified resource.

@@ -18,4 +18,9 @@ class Reception extends Model implements TranslatableContract
     ];
 
     public $translatedAttributes = ['message,nom,prenom,adresse'];
+
+    public function Association()
+ {
+     return $this->belongsTo(Association::class);
+ }
 }

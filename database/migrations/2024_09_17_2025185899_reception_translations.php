@@ -19,10 +19,10 @@ return new class extends Migration
             $table->unsignedBigInteger('reception_id');
             $table->foreign('reception_id')->references('id')->on('receptions')->cascadeOnDelete();
             // Translatable fields
-            $table->string('nom');
-            $table->string('prenom');
-            $table->string('adresse');
-            $table->string('message');
+            $table->string('nom')->nullable();
+            $table->string('prenom')->nullable();
+            $table->string('adresse')->nullable();
+            $table->string('message')->nullable();
         });
     }
 

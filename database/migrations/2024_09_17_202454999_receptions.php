@@ -12,6 +12,7 @@ return new class extends Migration
     {
         Schema::create('receptions', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('association_id')->nullable();
             $table->string('num_postale');
             $table->string('email');
             $table->timestamps();
