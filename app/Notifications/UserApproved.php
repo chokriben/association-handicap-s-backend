@@ -1,42 +1,51 @@
 <?php
 namespace App\Notifications;
+
 use Illuminate\Bus\Queueable;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use App\Models\Property; // Import the Property model
+use Illuminate\Notifications\Messages\MailMessage;
 
 class UserApproved extends Notification
 {
     use Queueable;
 
-    // Constructor with Property and data parameters
-    public function __construct()
+    protected $user;
+    protected $password;
+    protected $superAdminName;
+
+    public function __construct($user, $password, $superAdminName)
     {
-        //
+        $this->user = $user;
+        $this->password = $password;  // Le mot de passe de l'utilisateur
+        $this->superAdminName = $superAdminName;  // Le nom du super administrateur
     }
 
-    // Define the channels the notification will be sent through
-    public function via(object $notifiable): array
+    public function via($notifiable)
     {
         return ['mail'];
     }
 
-    // Build the mail representation of the notification
-    public function toMail(object $notifiable): MailMessage
+    public function toMail($notifiable)
     {
         return (new MailMessage)
-                    ->subject('Votre compte a été approuvé')
-                    ->greeting('Bonjour ' . $notifiable->name . ',')
-                    ->line('Nous sommes heureux de vous informer que votre compte a été approuvé.')
-                    ->action('Connectez-vous', url('/login'))
-                    ->line('Merci de faire partie de notre communauté!');
+            ->subject('Votre inscription a été acceptée')
+            ->line('Bonjour ' . $this->user->name . ',')
+            ->line('Votre inscription a été acceptée avec succès !')
+            ->line('Voici vos informations de connexion :')
+            ->line('**Email :** ' . $this->user->email)
+            ->line('**Mot de passe :** ' . $this->password)  // Envoyer le mot de passe (assurez-vous de le sécuriser)
+            ->line('Si vous avez des questions, n\'hésitez pas à nous contacter.')
+            ->line('Merci pour votre compréhension.')
+            ->line('---')
+            ->line('Cordialement,')
+            ->line($this->superAdminName);  // Le nom du super administrateur
     }
 
-    // Convert the notification to an array format (optional)
-    public function toArray(object $notifiable): array
+    public function toArray($notifiable)
     {
         return [
-            // You can include any relevant data here
+            'user_id' => $this->user->id,
+            'status' => 'approved',
         ];
     }
 }

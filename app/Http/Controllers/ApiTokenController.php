@@ -4,46 +4,48 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ApiTokenLoginRequest;
 use App\Models\User;
+use App\Notifications\NotifySuperAdmin;
+use App\Notifications\UserApproved;
+use App\Notifications\UserPendingApproval;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use App\Notifications\UserApproved;
 use App\Notifications\UserRejected;
+use App\Notifications\UserStatusUpdate;
+use Illuminate\Support\Facades\Notification;
 
 class ApiTokenController extends Controller
 {
+
     public function approveRegistration($id)
     {
-        $user = User::find($id);
+        // Trouver l'utilisateur par ID
+        $user = User::findOrFail($id);
 
-        if (!$user || $user->status !== 'pending') {
-            return response()->json(['error' => 'Invalid user or user not pending approval'], 404);
-        }
-
+        // Mettre à jour le statut de l'utilisateur à 'approved'
         $user->status = 'approved';
         $user->save();
+        $password = route('password.reset', ['token' => $user->createPasswordResetToken()]); // Hypothetical method
+        $superAdminName =  'chokri ben mahjoub';
+        // Notifier l'utilisateur que son inscription est approuvée
+        $user->notify(new UserApproved($user, $password, $superAdminName));
 
-        // Envoyer l'email de notification
-        $user->notify(new UserApproved());
-
-        return response()->json(['message' => 'User approved successfully, email sent'], 200);
+        return response()->json(['message' => 'User approved successfully.']);
     }
 
-
+    // Méthode pour rejeter l'inscription
     public function rejectRegistration($id)
     {
-        $user = User::find($id);
+        // Trouver l'utilisateur par ID
+        $user = User::findOrFail($id);
 
-        if (!$user || $user->status !== 'pending') {
-            return response()->json(['error' => 'Invalid user or user not pending approval'], 404);
-        }
-
+        // Mettre à jour le statut de l'utilisateur à 'rejected'
         $user->status = 'rejected';
         $user->save();
 
-        // Envoyer l'email de notification
-        $user->notify(new UserRejected());
+        // Notifier l'utilisateur que son inscription est rejetée
+        $user->notify(new UserRejected($user));
 
-        return response()->json(['message' => 'User rejected successfully, email sent'], 200);
+        return response()->json(['message' => 'User rejected successfully.']);
     }
 
     public function register(Request $request)
@@ -70,11 +72,16 @@ class ApiTokenController extends Controller
             'type_organisation' => $request->type_organisation,
             'telephone' => $request->telephone,
             'role' => $request->role,
-            'status' => 'pending', // New administrators are pending approval
+            'status' => 'pending', // Set status to pending
         ]);
+
+        // Notifier l'administrateur après l'enregistrement
+        $superAdminEmail = config('mail.superadmin'); // Défini dans le fichier .env ou config/mail.php
+        Notification::route('mail', $superAdminEmail)->notify(new NotifySuperAdmin($user));
 
         return response()->json(['message' => 'Registration successful, awaiting approval', 'user' => $user], 201);
     }
+
 
     public function login(ApiTokenLoginRequest $request)
     {
@@ -169,6 +176,4 @@ class ApiTokenController extends Controller
             'total' => $totalUsers, // Ajouter le nombre total d'utilisateurs
         ]);
     }
-
-
 }

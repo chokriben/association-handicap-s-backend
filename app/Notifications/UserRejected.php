@@ -1,19 +1,19 @@
 <?php
-
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Notifications\Messages\MailMessage;
 
 class UserRejected extends Notification
 {
     use Queueable;
 
-    public function __construct()
+    protected $user;
+
+    public function __construct($user)
     {
-        //
+        $this->user = $user;
     }
 
     public function via($notifiable)
@@ -24,9 +24,18 @@ class UserRejected extends Notification
     public function toMail($notifiable)
     {
         return (new MailMessage)
-                    ->subject('Votre compte a été rejeté')
-                    ->greeting('Bonjour ' . $notifiable->name . ',')
-                    ->line('Nous regrettons de vous informer que votre inscription a été rejetée.')
-                    ->line('Pour plus d\'informations, veuillez nous contacter.');
+            ->subject('Votre inscription a été rejetée')
+            ->line('Bonjour ' . $this->user->name . ',')
+            ->line('Nous sommes désolés de vous informer que votre inscription a été rejetée.')
+            ->line('Si vous avez des questions, n\'hésitez pas à nous contacter.')
+            ->line('Merci pour votre compréhension.');
+    }
+
+    public function toArray($notifiable)
+    {
+        return [
+            'user_id' => $this->user->id,
+            'status' => 'rejected',
+        ];
     }
 }

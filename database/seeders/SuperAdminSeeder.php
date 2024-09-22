@@ -19,9 +19,9 @@ class SuperAdminSeeder extends Seeder
         User::updateOrCreate(
             ['email' => 'superadmin@example.com'],
             [
-                'name' => 'Atef BouBaker',
-                'email' => 'atef.boubaker2000@gmail.com',
-                'password' => Hash::make('atef.boubaker2000@gmail.com'), // Replace with a secure password
+                'name' => 'Chokri ',
+                'email' => 'chokribenmahjoub@gmail.com',
+                'password' => Hash::make('chokribenmahjoub@gmail.com'),
                 'nom_association' => 'Super Admin Org',
                 'type_organisation' => 'Organisme',
                 'telephone' => '1234567890',
