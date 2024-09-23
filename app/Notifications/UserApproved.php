@@ -10,13 +10,13 @@ class UserApproved extends Notification
     use Queueable;
 
     protected $user;
-    protected $password;
+    protected $plainPassword;
     protected $superAdminName;
 
-    public function __construct($user, $password, $superAdminName)
+    public function __construct($user, $superAdminName)
     {
         $this->user = $user;
-        $this->password = $password;  // Le mot de passe de l'utilisateur
+        $this->plainPassword = $user->plain_password;
         $this->superAdminName = $superAdminName;  // Le nom du super administrateur
     }
 
@@ -33,7 +33,7 @@ class UserApproved extends Notification
             ->line('Votre inscription a été acceptée avec succès !')
             ->line('Voici vos informations de connexion :')
             ->line('**Email :** ' . $this->user->email)
-            ->line('**Mot de passe :** ' . $this->password)  // Envoyer le mot de passe (assurez-vous de le sécuriser)
+            ->line('**Mot de passe :** ' . $this->plainPassword)  // Envoyer le mot de passe (assurez-vous de le sécuriser)
             ->line('Si vous avez des questions, n\'hésitez pas à nous contacter.')
             ->line('Merci pour votre compréhension.')
             ->line('---')

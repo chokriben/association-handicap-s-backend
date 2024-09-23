@@ -51,8 +51,8 @@ class NotifySuperAdmin extends Notification
                     ->line('Name: ' . $this->newUser->name)
                     ->line('Email: ' . $this->newUser->email)
                     ->line('Role: ' . $this->newUser->role)
-                    ->action('Approve User', $approveUrl)   // Approve action
-                    ->action('Reject User', $rejectUrl)     // Reject action
+                   // ->action('Approve User', $approveUrl)   // Approve action
+                    //->action('Reject User', $rejectUrl)     // Reject action
                     ->line('Thank you for using our application!');
     }
 

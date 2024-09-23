@@ -23,14 +23,20 @@ class ApiTokenController extends Controller
 
         // Mettre à jour le statut de l'utilisateur à 'approved'
         $user->status = 'approved';
-        $user->save();
-        $password = route('password.reset', ['token' => $user->createPasswordResetToken()]); // Hypothetical method
-        $superAdminName =  'chokri ben mahjoub';
+
         // Notifier l'utilisateur que son inscription est approuvée
-        $user->notify(new UserApproved($user, $password, $superAdminName));
+        $superAdminName = 'chokri ben mahjoub';
+        $user->notify(new UserApproved($user, $superAdminName));
+
+        // Vider le champ plain_password
+        $user->plain_password = null;
+
+        // Sauvegarder les modifications
+        $user->save();
 
         return response()->json(['message' => 'User approved successfully.']);
     }
+
 
     // Méthode pour rejeter l'inscription
     public function rejectRegistration($id)
@@ -64,10 +70,13 @@ class ApiTokenController extends Controller
             'role' => 'required|in:administrateur,membre',
         ]);
 
+        // Stocker le mot de passe en clair avant de le hasher
+        $plainPassword = $request->password;
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'password' => Hash::make($plainPassword),
+            'plain_password' => $plainPassword,
             'nom_association' => $request->nom_association,
             'type_organisation' => $request->type_organisation,
             'telephone' => $request->telephone,
@@ -75,12 +84,19 @@ class ApiTokenController extends Controller
             'status' => 'pending', // Set status to pending
         ]);
 
-        // Notifier l'administrateur après l'enregistrement
-        $superAdminEmail = config('mail.superadmin'); // Défini dans le fichier .env ou config/mail.php
-        Notification::route('mail', $superAdminEmail)->notify(new NotifySuperAdmin($user));
+        if ($user->role === 'administrateur') {
+            // Notifier le super administrateur si le rôle est administrateur
+            $superAdminEmail = config('mail.superadmin');
+            Notification::route('mail', $superAdminEmail)->notify(new NotifySuperAdmin($user));
+        } else {
+            // Notifier les administrateurs si le rôle est membre
+            $administrators = User::where('role', 'administrateur')->get();
+            Notification::send($administrators, new NotifySuperAdmin($user)); // ou créez une notification NotifyAdmin
+        }
 
         return response()->json(['message' => 'Registration successful, awaiting approval', 'user' => $user], 201);
     }
+
 
 
     public function login(ApiTokenLoginRequest $request)
@@ -117,8 +133,14 @@ class ApiTokenController extends Controller
         // Get the currently authenticated user
         $user = $request->user();
 
+        // Exclude the role attribute for super-admin
+        if ($user->role === 'super-admin') {
+            unset($user->role);
+        }
+
         return response()->json(['user' => $user], 200);
     }
+
     public function getAdministrators()
     {
         // Récupérer tous les utilisateurs ayant le rôle d'administrateur
