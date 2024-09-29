@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ApiTokenLoginRequest;
 use App\Models\User;
+use App\Notifications\NotifyAdminOfNewMember;
 use App\Notifications\NotifySuperAdmin;
 use App\Notifications\UserApproved;
 use App\Notifications\UserPendingApproval;
@@ -56,10 +57,12 @@ class ApiTokenController extends Controller
 
     public function register(Request $request)
     {
+        // Vérifier si l'utilisateur existe déjà avec cet email
         if (User::where('email', $request->email)->exists()) {
             return response()->json(['error' => "User already registered"], 409);
         }
 
+        // Valider les champs
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -68,10 +71,34 @@ class ApiTokenController extends Controller
             'type_organisation' => 'required|string|in:Centre,Association,Organisme',
             'telephone' => 'required|string|max:20',
             'role' => 'required|in:administrateur,membre',
+            'profile_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
+
+        // Si le rôle est "membre", vérifier si l'association est gérée par un administrateur approuvé
+        if ($request->role === 'membre') {
+            $associationExists = User::where('nom_association', $request->nom_association)
+                ->where('role', 'administrateur')
+                ->where('status', 'approved') // Vérification du statut "approved"
+                ->exists();
+
+            if (!$associationExists) {
+                return response()->json(['error' => "L'association spécifiée n'existe pas ou n'est pas gérée par un administrateur approuvé."], 422);
+            }
+        }
 
         // Stocker le mot de passe en clair avant de le hasher
         $plainPassword = $request->password;
+
+        // Rechercher l'administrateur associé à la même association si le rôle est "membre"
+        $admin = null;
+        if ($request->role === 'membre') {
+            $admin = User::where('nom_association', $request->nom_association)
+                ->where('role', 'administrateur')
+                ->where('status', 'approved')
+                ->first();
+        }
+
+        // Créer le nouvel utilisateur
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
@@ -82,16 +109,23 @@ class ApiTokenController extends Controller
             'telephone' => $request->telephone,
             'role' => $request->role,
             'status' => 'pending', // Set status to pending
+            'admin_id' => $admin ? $admin->id : null, // Associer à un admin si trouvé pour les membres
+            'admin_id' => $admin ? $admin->id : null,
         ]);
-
+        // Gestion de l'upload de la photo de profil
+        if ($request->hasFile('profile_photo')) {
+            $path = $request->file('profile_photo')->store('profile_photos', 'public'); // Stockage dans le dossier 'storage/app/public/profile_photos'
+            $user->profile_photo = $path; // Enregistrer le chemin de la photo dans le modèle
+            $user->save(); // Sauvegarder les modifications
+        }
+        // Notifier en fonction du rôle
         if ($user->role === 'administrateur') {
-            // Notifier le super administrateur si le rôle est administrateur
+            // Notifier le super administrateur pour les nouveaux administrateurs
             $superAdminEmail = config('mail.superadmin');
             Notification::route('mail', $superAdminEmail)->notify(new NotifySuperAdmin($user));
-        } else {
-            // Notifier les administrateurs si le rôle est membre
-            $administrators = User::where('role', 'administrateur')->get();
-            Notification::send($administrators, new NotifySuperAdmin($user)); // ou créez une notification NotifyAdmin
+        } else if ($user->role === 'membre' && $admin) {
+            // Notifier l'administrateur de l'association pour les nouveaux membres
+            $admin->notify(new NotifyAdminOfNewMember($user));
         }
 
         return response()->json(['message' => 'Registration successful, awaiting approval', 'user' => $user], 201);
@@ -180,22 +214,40 @@ class ApiTokenController extends Controller
         // Retourner une réponse JSON avec un message de succès et les nouvelles données de l'utilisateur
         return response()->json(['message' => 'Profile updated successfully', 'user' => $user], 200);
     }
-    public function getUsersByStatus()
+    public function getUsersByStatusAdmin()
     {
-        // Compter les utilisateurs par statut
-        $acceptedUsers = User::where('status', 'approved')->count();
-        $pendingUsers = User::where('status', 'pending')->count();
-        $rejectedUsers = User::where('status', 'rejected')->count();
+        // Count users with role 'administrateur' by status
+        $acceptedAdmins = User::where('role', 'administrateur')->where('status', 'approved')->count();
+        $pendingAdmins = User::where('role', 'administrateur')->where('status', 'pending')->count();
+        $rejectedAdmins = User::where('role', 'administrateur')->where('status', 'rejected')->count();
 
-        // Compter tous les utilisateurs (indépendamment du statut)
-        $totalUsers = User::count();
+        // Total count of users with role 'administrateur'
+        $totalAdmins = User::where('role', 'administrateur')->count();
 
-        // Retourner les résultats dans la réponse JSON
+        // Return the results in a JSON response
         return response()->json([
-            'accepted' => $acceptedUsers,
-            'pending' => $pendingUsers,
-            'rejected' => $rejectedUsers,
-            'total' => $totalUsers, // Ajouter le nombre total d'utilisateurs
+            'accepted' => $acceptedAdmins,
+            'pending' => $pendingAdmins,
+            'rejected' => $rejectedAdmins,
+            'total' => $totalAdmins,
+        ]);
+    }
+    public function getUsersByStatusMembre()
+    {
+        // Count users with role 'membre' by status
+        $acceptedMembers = User::where('role', 'membre')->where('status', 'approved')->count();
+        $pendingMembers = User::where('role', 'membre')->where('status', 'pending')->count();
+        $rejectedMembers = User::where('role', 'membre')->where('status', 'rejected')->count();
+
+        // Total count of users with role 'membre'
+        $totalMembers = User::where('role', 'membre')->count();
+
+        // Return the results in a JSON response
+        return response()->json([
+            'accepted' => $acceptedMembers,
+            'pending' => $pendingMembers,
+            'rejected' => $rejectedMembers,
+            'total' => $totalMembers,
         ]);
     }
 }

@@ -1,12 +1,14 @@
 <?php
 
 use App\Http\Controllers\ActualiteController;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\AssociationController;
 use App\Http\Controllers\EvenementController;
 
 use App\Http\Controllers\PublicationController;
 use App\Http\Controllers\LanguageController;
+use App\Http\Controllers\MemberController;
 use App\Http\Controllers\ReceptionController;
 use App\Http\Controllers\TypeAssociationController;
 use App\Models\User;
@@ -30,13 +32,14 @@ Route::middleware('auth:sanctum')->post('/auth/logout', [ApiTokenController::cla
 Route::middleware('auth:sanctum')->get('/user', [ApiTokenController::class, 'getUser']);
 Route::middleware(['auth:sanctum', 'super_admin'])->post('/approve-registration/{id}', [ApiTokenController::class, 'approveRegistration']);
 Route::middleware(['auth:sanctum', 'super_admin'])->post('/reject-registration/{id}', [ApiTokenController::class, 'rejectRegistration']);
+Route::middleware('auth:sanctum')->post('/members', [MemberController::class, 'store']); // Updated middleware
 
 
 Route::get('/administrators', [ApiTokenController::class, 'getAdministrators'])->middleware('auth:sanctum');
 
 //api get users status
-Route::get('/users', [ApiTokenController::class, 'getUsersByStatus']);
-
+Route::get('/users', [ApiTokenController::class, 'getUsersByStatusAdmin']);
+Route::get('/users/membre', [ApiTokenController::class, 'getUsersByStatusMembre']);
 
  Route::middleware('api')->group(function () {
     Route::resource('publications', PublicationController::class);
@@ -52,9 +55,6 @@ Route::middleware('api')->group(function () {
     Route::resource('receptions', ReceptionController::class);
 });
 
-// Route::middleware('api')->group(function () {
-//     Route::resource('associations', AssociationPresentationController::class);
-// });
 
 Route::middleware('api')->group(function () {
     Route::resource('type_associations', TypeAssociationController::class);
@@ -63,3 +63,5 @@ Route::middleware('api')->group(function () {
     Route::resource('associations', AssociationController::class);
 });
 
+Route::post('/admin/members/{user}/accept', [AdminController::class, 'acceptMember']);
+Route::post('/admin/members/{user}/reject', [AdminController::class, 'rejectMember']);

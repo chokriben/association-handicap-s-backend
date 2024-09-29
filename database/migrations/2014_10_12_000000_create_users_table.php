@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('telephone');
             $table->enum('role', ['super_admin', 'administrateur', 'membre', 'visiteur']);
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending'); // New field
+            $table->string('profile_photo')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

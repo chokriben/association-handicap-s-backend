@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('adresse_reception')->nullable();
             $table->string('name');
             $table->text('description')->nullable();
+            $table->unique(['association_id', 'locale', 'name'], 'association_locale_name_unique');
             $table->timestamps();
         });
     }

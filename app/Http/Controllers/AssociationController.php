@@ -72,9 +72,9 @@ class AssociationController extends Controller
             'adresse_reception_fr' => 'nullable|string',
             'adresse_reception_en' => 'nullable|string',
             'adresse_reception_ar' => 'nullable|string',
-            'name_fr' => 'nullable|string',
-            'name_en' => 'nullable|string',
-            'name_ar' => 'nullable|string',
+            'name_fr' => 'required|string',
+            'name_en' => 'required|string',
+            'name_ar' => 'required|string',
             'description_fr' => 'nullable|string',
             'description_en' => 'nullable|string',
             'description_ar' => 'nullable|string',
@@ -91,6 +91,22 @@ class AssociationController extends Controller
         $fields = ['adresse', 'adresse_reception', 'name', 'description'];
 
         foreach ($languages as $lang) {
+            $nameKey = "name_{$lang}";
+
+            // Check for duplicates within the same locale and association
+            $existingTranslation = AssociationTranslation::where('locale', $lang)
+                ->where('name', $validatedData[$nameKey])
+                ->where('association_id', '!=', $association->id) // Ignore the current association in case of an update
+                ->first();
+
+            if ($existingTranslation) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "The name '{$validatedData[$nameKey]}' already exists for the '{$lang}' locale."
+                ], 422);
+            }
+
+            // Set the translated fields after checking for duplicates
             foreach ($fields as $field) {
                 $fieldKey = "{$field}_{$lang}";
                 $association->translateOrNew($lang)->$field = $validatedData[$fieldKey] ?? null;

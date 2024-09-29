@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Validator;
 use Astrotomic\Translatable\Locales;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
-use PgSql\Lob;
+
 
 class ReceptionController  extends Controller
 {

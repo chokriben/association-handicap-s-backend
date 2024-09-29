@@ -47,13 +47,13 @@ class NotifySuperAdmin extends Notification
 
         return (new MailMessage)
                     ->subject('New User Registration')
-                    ->line('A new user has registered and is awaiting approval.')
+                    ->line("Un nouvel utilisateur s'est enregistré et est en attente d'approbation.")
                     ->line('Name: ' . $this->newUser->name)
                     ->line('Email: ' . $this->newUser->email)
                     ->line('Role: ' . $this->newUser->role)
                    // ->action('Approve User', $approveUrl)   // Approve action
                     //->action('Reject User', $rejectUrl)     // Reject action
-                    ->line('Thank you for using our application!');
+                    ->line("Merci d'utiliser notre application !");
     }
 
     /**

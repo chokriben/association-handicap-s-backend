@@ -23,7 +23,7 @@ class SuperAdminSeeder extends Seeder
                 'email' => 'chokribenmahjoub@gmail.com',
                 'password' => Hash::make('chokribenmahjoub@gmail.com'),
                 'nom_association' => 'Super Admin Org',
-                'type_organisation' => 'Organisme',
+                'type_organisation' => 'Association',
                 'telephone' => '1234567890',
                 'role' => 'super_admin',
                 'status' => 'approved',

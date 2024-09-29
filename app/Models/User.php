@@ -29,7 +29,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'adresse',
         'telephone',
         'role',
-        'status'
+        'status',
+        'profile_photo',
     ];
     public function organisations()
     {
@@ -50,7 +51,14 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(Message::class, 'utilisateur_id_destinataire');
     }
-
+    public function members()
+    {
+        return $this->hasMany(User::class, 'admin_id');
+    }
+    public function admin()
+    {
+        return $this->belongsTo(User::class, 'admin_id');
+    }
     /**
      * The attributes that should be hidden for serialization.
      *
