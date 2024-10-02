@@ -25,5 +25,8 @@ class Association  extends Model implements TranslatableContract
  {
      return $this->belongsTo(TypeAssociation::class);
  }
-
+ public function admin()
+    {
+        return $this->belongsTo(User::class, 'users_id');
+    }
 }

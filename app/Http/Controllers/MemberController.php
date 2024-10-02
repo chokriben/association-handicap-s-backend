@@ -1,15 +1,13 @@
 <?php
-
 namespace App\Http\Controllers;
 
+use App\Models\User; // Importation du modèle User
 use App\Models\Member;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
-
 class MemberController extends Controller
 {
-
     public function store(Request $request)
     {
         // Vérification si l'utilisateur est authentifié
@@ -19,7 +17,7 @@ class MemberController extends Controller
 
         // Validation des données
         $validatedData = $request->validate([
-            'users_id' => 'required|exists:users,id', // Assuming there's a 'users' table
+            'users_id' => 'required|exists:users,id', // Assurez-vous qu'il existe un utilisateur
             'name_fr' => 'nullable|string|max:255',
             'prenom_fr' => 'nullable|string|max:255',
             'name_en' => 'nullable|string|max:255',
@@ -34,18 +32,19 @@ class MemberController extends Controller
             'password' => 'nullable|string|min:8|max:255',
         ]);
 
+        // Création d'un nouvel utilisateur avec le rôle 'membre'
+        $user = User::create([
+            'email' => $validatedData['email'],
+            'password' => Hash::make($validatedData['password']),
+            'role' => 'membre', // Attribution du rôle 'membre'
+        ]);
+
         // Création d'un nouvel member
-        $member = new Member(); // Initialize the Member object
+        $member = new Member();
 
         // Mise à jour des attributs du member
-        $member->users_id = $validatedData['users_id'];
-        $member->email = $validatedData['email'] ?? null;
+        $member->users_id = $user->id; // Lier le member à l'utilisateur
         $member->phone = $validatedData['phone'] ?? null;
-
-        // Si un mot de passe est fourni, on le crypte avant de le sauvegarder
-        if (isset($validatedData['password'])) {
-            $member->password = Hash::make($validatedData['password']);
-        }
 
         // Gestion des traductions pour les champs multilingues
         $languages = ['fr', 'en', 'ar'];
@@ -65,7 +64,7 @@ class MemberController extends Controller
         try {
             $member->save();
             return response()->json([
-                'message' => 'member ajouté avec succès!',
+                'message' => 'Member ajouté avec succès!',
                 'member' => $member,
             ], 201); // 201 Created
         } catch (\Exception $e) {
@@ -75,7 +74,6 @@ class MemberController extends Controller
             ], 500); // 500 Internal Server Error
         }
     }
-
 
     public function index()
     {

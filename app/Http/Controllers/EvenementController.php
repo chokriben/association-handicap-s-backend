@@ -2,208 +2,85 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Evenement; // Importation du modèle Evenement
 use Illuminate\Http\Request;
-use App\Models\Evenement;
-use App\Models\Media;
-use Illuminate\Support\Facades\Validator;
-use \Astrotomic\Translatable\Locales;
-use Illuminate\Pagination\LengthAwarePaginator;
-
 
 class EvenementController extends Controller
 {
-
     /**
-     * Display a listing of the resource.
-     */
-    public function index(Request $request, $perPage = 100)
-    {
-
-        $Evenements = Evenement::paginate($perPage);
-        $Evenements->each(
-            function ($Evenement, $key) {
-                $user = $Evenement->user;
-            }
-        );
-
-        if ($request->page) {
-            $Evenements = new LengthAwarePaginator($Evenements, count($Evenements), $perPage, $request->page);
-        }
-        return response()->json(
-            [
-                'success' => true,
-                'message' => 'selection est effectuée avec success',
-                'Evenements' => $Evenements,
-            ],
-            200
-        );
-    }
-
-    /**
-     * Store a newly created resource in storage.
+     * Store a newly created evenement in storage.
      */
     public function store(Request $request)
     {
-
-        $langages = app(Locales::class)->all();
-
-        foreach ($langages as $language) {
-
-            $validator = Validator::make($request->all(), [
-
-               // 'name_' . $language =>  'max:255|required',
-               // 'description_' . $language =>  'max:255|required',
-            ]);
+        // Vérification si l'utilisateur est authentifié
+        if (!auth()->check()) {
+            return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        if ($validator->fails()) {
-            return response()->json([
-                "success" => false,
-                "errorsValidation" => $validator->messages()
-            ], 400);
-        } else {
-            $Evenement = new Evenement();
+        // Validation des données
+        $validatedData = $request->validate([
+            'association_id' => 'required|exists:associations,id', // Assurez-vous qu'il existe une association
+            'event_date' => 'required|date',
+            'capacity' => 'nullable|integer|min:0',
+            'contact_email' => 'nullable|email',
+            // Validation des traductions
+            'title_fr' => 'nullable|string|max:255',
+            'title_en' => 'nullable|string|max:255',
+            'title_ar' => 'nullable|string|max:255',
+            'description_fr' => 'nullable|string',
+            'description_en' => 'nullable|string',
+            'description_ar' => 'nullable|string',
+            'location_fr' => 'nullable|string|max:255',
+            'location_en' => 'nullable|string|max:255',
+            'location_ar' => 'nullable|string|max:255',
+        ]);
 
+        // Création d'un nouvel evenement
+        $evenement = new Evenement();
+        $evenement->association_id = $validatedData['association_id'];
+        $evenement->event_date = $validatedData['event_date'];
+        $evenement->capacity = $validatedData['capacity'] ?? 0;
+        $evenement->contact_email = $validatedData['contact_email'] ?? null;
 
-            foreach ($langages as $language) {
-                $Evenement->translateOrNew($language)->name = $request->input('name_' . $language);
-                $Evenement->translateOrNew($language)->description = $request->input('description_' . $language);
-            }
+        // Gestion des traductions pour les champs multilingues
+        $languages = ['fr', 'en', 'ar'];
+        $fields = ['title', 'description', 'location'];
 
-            $Evenement->date_debut = $request->input('date_debut')?? now();
-            $Evenement->date_fin = $request->input('date_fin')?? now();
-            $Evenement->user_id = $request->input('user_id');
-            $Evenement->save();
-
-            //file
-            if ($request->hasFile('file')) {
-                $file = $request->file('file');
-                $allowedPhotoExtension = ['jpg', 'png', 'jpeg', 'gif'];
-                $filename = $file->getClientOriginalName();
-                $extension = $file->getClientOriginalExtension();
-                $checkPhoto = in_array($extension, $allowedPhotoExtension);
-
-                if ($checkPhoto) {
-                    $filename = $file->store('Actualites/photos', 'ftp');
-                    $media = new Media(
-                        [
-                            'legende' => 'legende',
-                            'type' => '1',
-                            'src' => $filename
-                        ]
-                    );
+        foreach ($languages as $lang) {
+            foreach ($fields as $field) {
+                $fieldKey = "{$field}_{$lang}";
+                if (isset($validatedData[$fieldKey])) {
+                    // Utilisation de la méthode `translateOrNew` pour les traductions
+                    $evenement->translateOrNew($lang)->$field = $validatedData[$fieldKey];
                 }
-                $Evenement->medias()->save($media);
             }
-
-            return response()->json(
-                [
-                    "success" => true,
-                    "message" => "insertion est effectuée avec success",
-                ],
-                200
-            );
         }
-    }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Request $request)
-    {
-        $Evenement = Evenement::findOrFail($request->id);
-        return response()->json(
-            [
-                "success" => true,
-                "message" => "Selection est effectuée avec success",
-                "Evenement" => $Evenement,
-            ],
-            200
-        );
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request)
-    {
-
-        $langages = app(Locales::class)->all();
-
-        foreach ($langages as $language) {
-
-            $validator = Validator::make($request->all(), [
-
-                'name_' . $language =>  'max:255|required',
-                'description_' . $language =>  'max:255|required',
-            ]);
-        }
-        if ($validator->fails()) {
+        // Sauvegarde de l'evenement et de ses traductions
+        try {
+            $evenement->save();
             return response()->json([
-                "success" => false,
-                "errorsValidation" => $validator->messages()
-            ], 400);
-        } else {
-
-            $Evenement = Evenement::findOrFail($request->id);
-            $langages = app(Locales::class)->all();
-
-            foreach ($langages as $language) {
-                $Evenement->translateOrNew($language)->name = $request->input('name_' . $language);
-                $Evenement->translateOrNew($language)->description = $request->input('description_' . $language);
-            }
-
-            $Evenement->date_debut = $request->input('date_debut');
-            $Evenement->date_fin = $request->input('date_fin');
-            $Evenement->user_id = $request->input('user_id');
-            $Evenement->active = $request->input('active');
-            $Evenement->save();
-
-            //file
-            if ($request->hasFile('file')) {
-                $file = $request->file('file');
-                $allowedPhotoExtension = ['jpg', 'png', 'jpeg', 'gif'];
-                $filename = $file->getClientOriginalName();
-                $extension = $file->getClientOriginalExtension();
-                $checkPhoto = in_array($extension, $allowedPhotoExtension);
-
-                if ($checkPhoto) {
-                    $filename = $file->store('Evenement/photos', 'ftp');
-                    $media = new Media(
-                        [
-                            'legende' => 'legende',
-                            'type' => '1',
-                            'src' => $filename
-                        ]
-                    );
-                }
-                $Evenement->medias()->save($media);
-            }
-
-            $Evenement->save();
-            return response()->json(
-                [
-                    "success" => true,
-                    "message" => "Modification est effectuée avec success",
-                ],
-                200
-            );
+                'message' => 'Événement ajouté avec succès!',
+                'evenement' => $evenement,
+            ], 201); // 201 Created
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erreur lors de l\'ajout de l\'événement.',
+                'error' => $e->getMessage(),
+            ], 500); // 500 Internal Server Error
         }
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Display a listing of the events.
      */
-    public function destroy(Request $request)
+    public function index()
     {
-        Evenement::findOrFail($request->id)->delete();
+        // Récupération de tous les événements avec leurs traductions
+        $evenements = Evenement::with('translations')->get();
 
-        return response()->json(
-            [
-                "success" => true,
-                "message" => "suppression est effectuée avec success",
-            ],
-            200
-        );
+        return response()->json([
+            'evenements' => $evenements,
+        ]);
     }
 }

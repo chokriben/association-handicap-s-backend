@@ -19,8 +19,10 @@ return new class extends Migration
             $table->unsignedBigInteger('evenement_id');
             $table->foreign('evenement_id')->references('id')->on('evenements')->cascadeOnDelete();;
             // Actual fields you want to translate
-            $table->string('name');
+            $table->string('title');
+            $table->string('location');
             $table->longText('description');
+            $table->timestamps();
         });
     }
 

@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('associations', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('users_id')->constrained('users')->onDelete('cascade'); 
             $table->unsignedBigInteger('type_association_id')->nullable(); // Add this line for the foreign key
             $table->string('phone')->nullable();
             $table->string('phone_fax')->nullable(); // Utilisez un underscore (_) au lieu du tiret (-)

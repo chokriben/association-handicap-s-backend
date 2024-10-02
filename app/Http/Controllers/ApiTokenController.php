@@ -250,4 +250,126 @@ class ApiTokenController extends Controller
             'total' => $totalMembers,
         ]);
     }
+    public function addMember(Request $request)
+    {
+        // Récupérer l'administrateur connecté
+        $admin = $request->user();
+
+        // Vérifier que l'utilisateur connecté est bien un administrateur approuvé
+        if ($admin->role !== 'administrateur' || $admin->status !== 'approved') {
+            return response()->json(['error' => "Only approved administrators can add members."], 403);
+        }
+
+        // Valider les champs d'entrée
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed',
+            'telephone' => 'required|string|max:20',
+            'adresse' => 'nullable|string|max:255',
+        ]);
+
+        // Stocker le mot de passe en clair avant de le hasher
+        $plainPassword = $request->password;
+
+        // Créer le nouvel utilisateur (membre)
+        $member = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($plainPassword),
+            'plain_password' => $plainPassword,
+            'nom_association' => $admin->nom_association,
+            'type_organisation' => $admin->type_organisation,
+            'telephone' => $request->telephone,
+            'adresse' => $request->adresse,
+            'role' => 'membre',
+            'status' => 'approved',
+            'admin_id' => $admin->id,
+        ]);
+
+        // Notifier l'administrateur que le membre a été ajouté avec succès
+        $admin->notify(new NotifyAdminOfNewMember($member));
+
+        return response()->json(['message' => 'Member added successfully and pending approval.', 'member' => $member], 201);
+    }
+    public function updateMember(Request $request, $id)
+    {
+        // Récupérer l'administrateur connecté
+        $admin = $request->user();
+
+        // Vérifier que l'utilisateur connecté est bien un administrateur approuvé
+        if ($admin->role !== 'administrateur' || $admin->status !== 'approved') {
+            return response()->json(['error' => "Only approved administrators can update members."], 403);
+        }
+
+        // Trouver le membre par ID
+        $member = User::where('id', $id)
+            ->where('admin_id', $admin->id) // S'assurer que le membre est associé à l'administrateur connecté
+            ->where('role', 'membre') // S'assurer que l'utilisateur est un membre
+            ->firstOrFail();
+
+        // Valider les champs d'entrée
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $member->id, // Unique, sauf pour l'utilisateur actuel
+            'telephone' => 'required|string|max:20',
+            'adresse' => 'nullable|string|max:255', // Optionnel
+            'password' => 'nullable|string|min:8|confirmed', // Optionnel, seulement si l'utilisateur veut changer le mot de passe
+        ]);
+
+        // Mettre à jour les informations du membre
+        $member->name = $request->name;
+        $member->email = $request->email;
+        $member->telephone = $request->telephone;
+        $member->adresse = $request->adresse;
+
+        // Si un nouveau mot de passe est fourni, le mettre à jour
+        if ($request->filled('password')) {
+            $member->password = Hash::make($request->password);
+        }
+
+        // Sauvegarder les modifications
+        $member->save();
+
+        return response()->json(['message' => 'Member updated successfully', 'member' => $member], 200);
+    }
+
+    public function deleteMember(Request $request, $id)
+    {
+        // Récupérer l'administrateur connecté
+        $admin = $request->user();
+
+        // Vérifier que l'utilisateur connecté est bien un administrateur approuvé
+        if ($admin->role !== 'administrateur' || $admin->status !== 'approved') {
+            return response()->json(['error' => "Only approved administrators can delete members."], 403);
+        }
+
+        // Trouver le membre par ID
+        $member = User::where('id', $id)
+            ->where('admin_id', $admin->id) // S'assurer que le membre est associé à l'administrateur connecté
+            ->where('role', 'membre') // S'assurer que l'utilisateur est un membre
+            ->firstOrFail();
+
+        // Supprimer le membre
+        $member->delete();
+
+        return response()->json(['message' => 'Member deleted successfully'], 200);
+    }
+    public function getMembers(Request $request)
+    {
+        // Récupérer l'administrateur connecté
+        $admin = $request->user();
+
+        // Vérifier que l'utilisateur connecté est bien un administrateur approuvé
+        if ($admin->role !== 'administrateur' || $admin->status !== 'approved') {
+            return response()->json(['error' => "Only approved administrators can view members."], 403);
+        }
+
+        // Récupérer les membres associés à cet administrateur
+        $members = User::where('admin_id', $admin->id)->where('role', 'membre')->get();
+
+        return response()->json(['members' => $members], 200);
+    }
+
+
 }

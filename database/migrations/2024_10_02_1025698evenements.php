@@ -13,11 +13,10 @@ return new class extends Migration
     {
         Schema::create('evenements', function (Blueprint $table) {
             $table->id();
-            $table->integer('active')->default(1);
-            $table->date('date_debut');
-            $table->date('date_fin');
-            $table->unsignedBigInteger('user_id');
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreignId('association_id')->constrained()->onDelete('cascade');
+            $table->dateTime('event_date');
+            $table->integer('capacity')->default(0);
+            $table->string('contact_email')->nullable();
             $table->timestamps();
         });
     }

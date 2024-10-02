@@ -15,21 +15,21 @@ class Evenement extends Model implements TranslatableContract
     protected $table = 'evenements';
 
     protected $fillable = [
-        'active',
-        'date_debut',
-        'date_fin'
+        'association_id',
+        'title',
+        'description',
+        'event_date',
+        'location',
+        'capacity',
+        'contact_email',
     ];
-    public $translatedAttributes = ['name', 'description'];
+    public $translatedAttributes = ['title', 'description','location'];
 
 
-    public function user()
+    public function association()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Association::class);
     }
 
-    /*----------------- Morph ------------------*/
-    public function medias()
-    {
-        return $this->morphMany(Media::class, 'mediatable');
-    }
+
 }

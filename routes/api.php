@@ -32,9 +32,21 @@ Route::middleware('auth:sanctum')->post('/auth/logout', [ApiTokenController::cla
 Route::middleware('auth:sanctum')->get('/user', [ApiTokenController::class, 'getUser']);
 Route::middleware(['auth:sanctum', 'super_admin'])->post('/approve-registration/{id}', [ApiTokenController::class, 'approveRegistration']);
 Route::middleware(['auth:sanctum', 'super_admin'])->post('/reject-registration/{id}', [ApiTokenController::class, 'rejectRegistration']);
-Route::middleware('auth:sanctum')->post('/members', [MemberController::class, 'store']); // Updated middleware
+Route::middleware('auth:sanctum')->post('/add/members', [ApiTokenController::class, 'addMember']); // Updated middleware
+Route::middleware('auth:sanctum')->group(function () {
+    Route::put('/members/{id}', [ApiTokenController::class, 'updateMember']);
+    Route::delete('/members/{id}', [ApiTokenController::class, 'deleteMember']);
+    Route::get('/members', [ApiTokenController::class, 'getMembers']);
+});
 
-
+// Routes pour la gestion des événements
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/add/evenements', [EvenementController::class, 'store']); // Créer un événement
+    Route::get('/evenements', [EvenementController::class, 'index']); // Récupérer tous les événements
+    Route::get('/evenements/{id}', [EvenementController::class, 'show']); // Récupérer un événement par ID
+    Route::put('/evenements/{id}', [EvenementController::class, 'update']); // Mettre à jour un événement
+    Route::delete('/evenements/{id}', [EvenementController::class, 'destroy']); // Supprimer un événement
+});
 Route::get('/administrators', [ApiTokenController::class, 'getAdministrators'])->middleware('auth:sanctum');
 
 //api get users status
