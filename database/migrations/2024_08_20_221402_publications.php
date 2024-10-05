@@ -10,10 +10,11 @@ return new class extends Migration
 
         Schema::create('publications', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('users_id')->constrained('users')->onDelete('cascade');
             $table->integer('active')->default(1);
-            $table->date('date_publication');
-            $table->unsignedBigInteger('user_id');
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->string('photo')->nullable();
+            $table->string('video')->nullable();
+            $table->string('pdf')->nullable();
             $table->timestamps();
         });
     }

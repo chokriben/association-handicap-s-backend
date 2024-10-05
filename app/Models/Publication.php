@@ -13,13 +13,15 @@ class Publication extends Model implements TranslatableContract
     use Translatable;
     protected $table = 'publications';
     protected $fillable = [
-        'date_publication',
+        'pdf',
         'active',
+        'video',
+        'photo'
     ];
     public $translatedAttributes = ['titre', 'contenu'];
-    public function user()
+    public function admin()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'users_id');
     }
 }
 

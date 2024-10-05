@@ -60,6 +60,11 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->belongsTo(User::class, 'admin_id');
     }
+    public function association()
+    {
+    return $this->belongsTo(Association::class, 'users_id');
+    }
+
     /**
      * The attributes that should be hidden for serialization.
      *

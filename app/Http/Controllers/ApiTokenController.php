@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Notifications\UserRejected;
 use App\Notifications\UserStatusUpdate;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Notification;
 
 class ApiTokenController extends Controller
@@ -369,6 +370,36 @@ class ApiTokenController extends Controller
         $members = User::where('admin_id', $admin->id)->where('role', 'membre')->get();
 
         return response()->json(['members' => $members], 200);
+    }
+    public function getUserAssociationId()
+    {
+        // Vérifier si l'utilisateur est authentifié
+        if (Auth::check()) {
+            // Récupérer l'utilisateur connecté
+            $user = Auth::user();
+
+            // Récupérer l'association associée
+            $association = $user->association;
+
+            // Vérifier si l'association existe
+            if ($association) {
+                return response()->json([
+                    'success' => true,
+                    'association_id' => $association->id,
+                    'message' => 'Association ID retrieved successfully.',
+                ], 200);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No association found for this user.',
+                ], 404);
+            }
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'User is not authenticated.',
+        ], 401);
     }
 
 

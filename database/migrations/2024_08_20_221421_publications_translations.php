@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('publication_translations', function (Blueprint $table) {
+        Schema::create('publications_translations', function (Blueprint $table) {
             $table->id();
             $table->string('locale')->index();
             $table->unique(['publication_id', 'locale']);
@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreign('publication_id')->references('id')->on('publications')->cascadeOnDelete();
             $table->string('titre');
             $table->longText('contenu');
+            $table->timestamps();
 
         });
     }

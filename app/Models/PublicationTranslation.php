@@ -8,12 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 class PublicationTranslation extends Model
 {
     use HasFactory;
-
+    protected $table = 'publications_translations';
     protected $fillable = [
         'titre',
         'contenu',
     ];
 
-    public $timestamps = false;
+
 }
 

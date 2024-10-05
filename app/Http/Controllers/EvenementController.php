@@ -17,9 +17,12 @@ class EvenementController extends Controller
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
+        // Récupération de l'ID de l'utilisateur authentifié
+        $userId = auth()->id();
+
         // Validation des données
         $validatedData = $request->validate([
-            'association_id' => 'required|exists:associations,id', // Assurez-vous qu'il existe une association
+            'association_id' => 'required|exists:associations,id', // Validation pour association_id
             'event_date' => 'required|date',
             'capacity' => 'nullable|integer|min:0',
             'contact_email' => 'nullable|email',
@@ -37,10 +40,13 @@ class EvenementController extends Controller
 
         // Création d'un nouvel evenement
         $evenement = new Evenement();
-        $evenement->association_id = $validatedData['association_id'];
         $evenement->event_date = $validatedData['event_date'];
         $evenement->capacity = $validatedData['capacity'] ?? 0;
         $evenement->contact_email = $validatedData['contact_email'] ?? null;
+
+        // Ajout des relations avec l'utilisateur et l'association
+        $evenement->user_id = $userId; // Assigner l'ID de l'utilisateur authentifié
+        $evenement->association_id = $validatedData['association_id']; // Assigner l'ID de l'association
 
         // Gestion des traductions pour les champs multilingues
         $languages = ['fr', 'en', 'ar'];

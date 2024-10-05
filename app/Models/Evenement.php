@@ -16,6 +16,7 @@ class Evenement extends Model implements TranslatableContract
 
     protected $fillable = [
         'association_id',
+        'user_id',
         'title',
         'description',
         'event_date',
@@ -31,5 +32,8 @@ class Evenement extends Model implements TranslatableContract
         return $this->belongsTo(Association::class);
     }
 
-
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }
