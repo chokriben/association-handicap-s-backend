@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Evenement; // Importation du modèle Evenement
 use Illuminate\Http\Request;
+use App\Models\User;
 
 class EvenementController extends Controller
 {
@@ -22,7 +23,6 @@ class EvenementController extends Controller
 
         // Validation des données
         $validatedData = $request->validate([
-            'association_id' => 'required|exists:associations,id', // Validation pour association_id
             'event_date' => 'required|date',
             'capacity' => 'nullable|integer|min:0',
             'contact_email' => 'nullable|email',
@@ -46,7 +46,7 @@ class EvenementController extends Controller
 
         // Ajout des relations avec l'utilisateur et l'association
         $evenement->user_id = $userId; // Assigner l'ID de l'utilisateur authentifié
-        $evenement->association_id = $validatedData['association_id']; // Assigner l'ID de l'association
+
 
         // Gestion des traductions pour les champs multilingues
         $languages = ['fr', 'en', 'ar'];
@@ -77,16 +77,46 @@ class EvenementController extends Controller
         }
     }
 
-    /**
+      /**
      * Display a listing of the events.
+     * L'admin peut voir tous les événements, mais les utilisateurs voient seulement leurs propres événements.
      */
     public function index()
-    {
-        // Récupération de tous les événements avec leurs traductions
-        $evenements = Evenement::with('translations')->get();
+{
+    // Récupérer l'utilisateur authentifié
+    $user = auth()->user();
 
-        return response()->json([
-            'evenements' => $evenements,
-        ]);
+    // Vérification si l'utilisateur n'est pas authentifié
+    if (!$user) {
+        return response()->json(['message' => 'Unauthorized'], 401);
     }
+
+    // Si l'utilisateur est un administrateur
+    if (isset($user->role) && $user->role === 'administrateur') {
+        // L'administrateur peut voir tous les événements
+        $evenements = Evenement::with('translations')->get();
+    } else {
+        // Si l'utilisateur est un membre (lié à un administrateur)
+        if (isset($user->admin_id)) {
+            // Il ne peut voir que les événements créés par son administrateur (via admin_id)
+            $evenements = Evenement::with('translations')
+                ->where('user_id', $user->admin_id) // Les événements de l'administrateur
+                ->get();
+        } else {
+            // Sinon, l'utilisateur peut voir ses propres événements
+            $evenements = Evenement::with('translations')
+                ->where('user_id', $user->id)
+                ->get();
+        }
+    }
+
+    // Retourner les événements dans la réponse JSON
+    return response()->json([
+        'evenements' => $evenements,
+    ]);
+}
+
+
+
+
 }

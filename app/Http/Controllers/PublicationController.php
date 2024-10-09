@@ -81,30 +81,43 @@ class PublicationController extends Controller
             ], 500); // 500 Internal Server Error
         }
     }
-
     public function index()
     {
-        // Récupération de l'ID de l'utilisateur connecté
         $users_id = auth()->id();
+        $user = User::find($users_id);
 
-        // Vérifiez si l'utilisateur est connecté
-        if (!$users_id) {
+        if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'L\'utilisateur doit être connecté pour voir ses publications.',
-            ], 400);
+                'message' => 'Vous devez être connecté pour voir les publications.',
+            ], 401); // Unauthorized
         }
 
-        // Récupération des publications de l'utilisateur connecté
-        $publications = Publication::where('users_id', $users_id)
-            ->with('translations')
-            ->get();
+        if ($user->role === 'administrateur') {
+            // L'administrateur voit ses publications et celles de ses membres
+            $publications = Publication::where('users_id', $users_id) // Publications de l'admin
+                ->orWhereHas('user', function ($query) use ($users_id) {
+                    $query->where('admin_id', $users_id); // Publications des membres sous cet admin
+                })
+                ->with('user:id,name')
+                ->get();
+        } else {
+            // Un membre voit ses propres publications et celles de l'administrateur
+            $publications = Publication::where('users_id', $users_id) // Ses propres publications
+                ->orWhereHas('user', function ($query) use ($user) {
+                    $query->where('id', $user->admin_id); // Publications créées par son admin
+                })
+                ->with('user:id,name')
+                ->get();
+        }
 
         return response()->json([
             'success' => true,
-            'publications' => $publications,
+            'publications' => $publications, // Liste des publications visibles
         ]);
     }
+
+
     // Méthode de mise à jour d'une publication
     public function update(Request $request, $id)
     {

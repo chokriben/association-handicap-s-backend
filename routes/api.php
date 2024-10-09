@@ -39,22 +39,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/members', [ApiTokenController::class, 'getMembers']);
 });
 Route::middleware('auth:sanctum')->get('/user/association-id', [ApiTokenController::class, 'getUserAssociationId']);
-// Routes pour la gestion des événements
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/add/evenements', [EvenementController::class, 'store']); // Créer un événement
-    Route::get('/evenements', [EvenementController::class, 'index']); // Récupérer tous les événements
-    Route::get('/evenements/{id}', [EvenementController::class, 'show']); // Récupérer un événement par ID
-    Route::put('/evenements/{id}', [EvenementController::class, 'update']); // Mettre à jour un événement
-    Route::delete('/evenements/{id}', [EvenementController::class, 'destroy']); // Supprimer un événement
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    // Define resourceful routes for the EvenementController
+    Route::resource('evenements', EvenementController::class);
 });
-
-
-
-    // Route::post('/publications', [PublicationController::class, 'store']); // Créer une publication
-    // Route::get('/publications', [PublicationController::class, 'index']); // Récupérer toutes les publications
-    // Route::get('/publications/{id}', [PublicationController::class, 'show']); // Récupérer une publication par ID
-    // Route::put('/publications/{id}', [PublicationController::class, 'update']); // Mettre à jour une publication
-    // Route::delete('/publications/{id}', [PublicationController::class, 'destroy']); // Supprimer une publication
 
 Route::get('/administrators', [ApiTokenController::class, 'getAdministrators'])->middleware('auth:sanctum');
 
@@ -65,9 +54,7 @@ Route::get('/users/membre', [ApiTokenController::class, 'getUsersByStatusMembre'
  Route::middleware('api')->group(function () {
     Route::resource('publications', PublicationController::class);
 });
-Route::middleware('api')->group(function () {
-    Route::resource('evenements', EvenementController::class);
-});
+
 
 Route::middleware('api')->group(function () {
     Route::resource('actualites', ActualiteController::class);
@@ -80,10 +67,8 @@ Route::middleware('api')->group(function () {
 Route::middleware('api')->group(function () {
     Route::resource('type_associations', TypeAssociationController::class);
 });
-// Route::middleware('api')->group(function () {
-//     Route::resource('associations', AssociationController::class);
-// });
-Route::middleware('auth:sanctum')->group(function () {
+
+Route::middleware('api')->group(function () {
     Route::resource('associations', AssociationController::class);
 });
 Route::middleware('auth:sanctum')->group(function () {

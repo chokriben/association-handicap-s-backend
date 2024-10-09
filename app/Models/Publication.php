@@ -19,7 +19,7 @@ class Publication extends Model implements TranslatableContract
         'photo'
     ];
     public $translatedAttributes = ['titre', 'contenu'];
-    public function admin()
+    public function user()
     {
         return $this->belongsTo(User::class, 'users_id');
     }

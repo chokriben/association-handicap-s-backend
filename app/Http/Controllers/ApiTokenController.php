@@ -11,7 +11,6 @@ use App\Notifications\UserPendingApproval;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Notifications\UserRejected;
-use App\Notifications\UserStatusUpdate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Notification;
 
