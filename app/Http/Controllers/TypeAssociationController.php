@@ -22,7 +22,27 @@ class TypeAssociationController extends Controller
             'type_associations' => $typeAssociations,
         ], 200);
     }
+    public function indexAll()
+    {
+        // Fetch all type associations with their translations
+        $typeAssociations = TypeAssociation::with('translations')->get();
 
+        // Format the data to include translations properly
+        $formattedTypeAssociations = $typeAssociations->map(function ($typeAssociation) {
+            return [
+                'id' => $typeAssociation->id,
+                'name_fr' => $typeAssociation->translate('fr')->name ?? null,
+                'name_en' => $typeAssociation->translate('en')->name ?? null,
+                'name_ar' => $typeAssociation->translate('ar')->name ?? null,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Type associations retrieved successfully',
+            'type_associations' => $formattedTypeAssociations,
+        ], 200);
+    }
     /**
      * Store or update the resource in storage.
      */
@@ -59,7 +79,39 @@ class TypeAssociationController extends Controller
             'data' => $typeAssociation
         ], $typeAssociation->wasRecentlyCreated ? 201 : 200);
     }
+   public function update(Request $request, $id)
+    {
+        // Validate incoming data
+        $validatedData = $request->validate([
+            'name_fr' => 'nullable|string',
+            'name_en' => 'nullable|string',
+            'name_ar' => 'nullable|string',
+        ]);
 
+        // Find the existing TypeAssociation
+        $typeAssociation = TypeAssociation::findOrFail($id);
+
+        // Define the languages and fields
+        $languages = ['fr', 'en', 'ar'];
+        $fields = ['name'];
+
+        // Set translations dynamically
+        foreach ($languages as $lang) {
+            foreach ($fields as $field) {
+                $fieldKey = "{$field}_{$lang}";
+                $typeAssociation->translateOrNew($lang)->$field = $validatedData[$fieldKey] ?? $typeAssociation->translate($lang)->$field ?? null;
+            }
+        }
+
+        // Save the type association
+        $typeAssociation->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Type association updated successfully',
+            'data' => $typeAssociation
+        ], 200);
+    }
     /**
      * Display the specified resource.
      */

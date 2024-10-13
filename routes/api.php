@@ -67,8 +67,8 @@ Route::middleware('api')->group(function () {
 Route::middleware('api')->group(function () {
     Route::resource('type_associations', TypeAssociationController::class);
 });
-
-Route::middleware('api')->group(function () {
+Route::middleware('api')->get('/associations_type', [TypeAssociationController::class, 'indexAll']);
+Route::middleware('auth:sanctum')->group(function () {
     Route::resource('associations', AssociationController::class);
 });
 Route::middleware('auth:sanctum')->group(function () {

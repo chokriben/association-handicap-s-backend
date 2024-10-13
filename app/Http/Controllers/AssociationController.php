@@ -14,55 +14,42 @@ class AssociationController extends Controller
      */
     public function index(Request $request)
     {
-        // Récupérer les paramètres de filtre (nom et type_association_id)
-        $name = $request->input('name');
-        $type_association_id = $request->input('type_association_id');
+        // Récupérer l'utilisateur connecté
+        $users_id = auth()->id();
 
-        // Construire la requête de base avec les traductions
-        $query = Association::with('translations');
-
-        // Appliquer le filtre par nom s'il est fourni
-        if ($name) {
-            $query->whereHas('translations', function ($q) use ($name) {
-                $q->where('name', 'like', "%{$name}%");
-            });
+        if (!$users_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You must be logged in to view associations.',
+            ], 401);
         }
 
-        // Appliquer le filtre par type_association_id s'il est fourni
-        if ($type_association_id) {
-            $query->where('type_association_id', $type_association_id);
-        }
+        // Récupérer l'association de l'utilisateur connecté
+        $association = Association::with('translations')
+            ->where('users_id', $users_id)
+            ->first();
 
-        // Exécuter la requête et récupérer les associations filtrées
-        $associations = $query->get();
+        if (!$association) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No association found for this administrator.',
+            ], 404);
+        }
 
         return response()->json([
             'success' => true,
-            'message' => 'Associations retrieved successfully',
-            'associations' => $associations,
+            'message' => 'Association retrieved successfully',
+            'association' => $association,
         ], 200);
     }
-
-    // Les autres méthodes restent inchangées (store, show, destroy)
-    // public function index()
-    // {
-    //     // Fetch all associations with their translations
-    //     $associations = Association::with('translations')->get();
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Associations retrieved successfully',
-    //         'associations' => $associations,
-    //     ], 200);
-    // }
 
     /**
      * Store or update the resource in storage.
      */
     public function store(Request $request)
     {
-        
-       $users_id = auth()->id();
+        $users_id = auth()->id();
+
         // Vérifiez si l'ID de l'administrateur est fourni
         if (!$users_id) {
             return response()->json([
@@ -71,13 +58,23 @@ class AssociationController extends Controller
             ], 400);
         }
 
+        // Chercher l'association existante pour cet utilisateur
+        $association = Association::where('users_id', $users_id)->first();
+
+        // Si l'association n'existe pas, on est en mode création, sinon c'est une mise à jour
+        $emailRule = 'required|email|unique:associations,email';
+        if ($association) {
+            // Si une association existe, ignorer l'email actuel dans la vérification de l'unicité
+            $emailRule = 'required|email|unique:associations,email,' . $association->id;
+        }
+
         // Valider les données de la requête
         $validatedData = $request->validate([
             'type_association_id' => 'required|exists:type_associations,id',
             'phone' => 'nullable|string',
             'phone_fax' => 'nullable|string',
             'rip' => 'nullable|string',
-            'email' => 'required|email|unique:associations,email',
+            'email' => $emailRule, // Utiliser la règle dynamique pour l'email
             'adresse_fr' => 'nullable|string',
             'adresse_en' => 'nullable|string',
             'adresse_ar' => 'nullable|string',
@@ -91,22 +88,10 @@ class AssociationController extends Controller
             'description_en' => 'nullable|string',
             'description_ar' => 'nullable|string',
         ]);
-        // Vérifier si l'utilisateur est déjà associé à une autre association
-        if (Association::where('users_id', $users_id)->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'This user is already associated with another association.',
-            ], 422);
-        }
-        // Chercher ou créer l'association en fonction de l'ID
-        $association = isset($validatedData['id']) ? Association::find($validatedData['id']) : new Association();
 
-        // Si l'association n'est pas trouvée et que l'ID a été fourni, retourner une erreur
-        if (isset($validatedData['id']) && !$association) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Association not found.',
-            ], 404);
+        // Si l'association n'existe pas, créer une nouvelle
+        if (!$association) {
+            $association = new Association();
         }
 
         // Affectation des données
@@ -115,7 +100,7 @@ class AssociationController extends Controller
         $association->phone_fax = $validatedData['phone_fax'];
         $association->rip = $validatedData['rip'];
         $association->email = $validatedData['email'];
-        $association->users_id = $users_id; // Utiliser l'ID de l'administrateur passé dans la requête
+        $association->users_id = $users_id; // Utiliser l'ID de l'administrateur
 
         // Gérer les traductions
         $languages = ['fr', 'en', 'ar'];
@@ -160,7 +145,7 @@ class AssociationController extends Controller
      */
     public function show($id)
     {
-        $association = Association::with('translations')->findOrFail($id);
+        $association = Association::with('translations')->where('users_id', auth()->id())->findOrFail($id);
 
         return response()->json([
             'success' => true,
