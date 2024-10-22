@@ -9,16 +9,12 @@ class OrganisationTranslation extends Model
     use HasFactory;
 
     protected $fillable = [
-        'locale',
-        'organisation_id',
-        'nom',
-        'description',
+        'name',
+        'adresse',
         'adresse_reception',
-        'adresse_locale'
+        'description',
+        'category'
     ];
 
-    public function organisation()
-    {
-        return $this->belongsTo(Organisation::class);
-    }
+    
 }

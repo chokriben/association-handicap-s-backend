@@ -2,31 +2,30 @@
 
 namespace App\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
-class Organisation extends Model
+use Astrotomic\Translatable\Contracts\Translatable as TranslatableContract;
+use Astrotomic\Translatable\Translatable;
+class Organisation extends Model implements TranslatableContract
 {
     use HasFactory;
-
+    use Translatable;
     protected $fillable = [
-        'logo',
-        'date_creation',
-        'utilisateur_id',
+        'phone',
+        'phone_fax',
+        'rip',
+        'email'
     ];
+    public $translatedAttributes = ['name', 'description', 'category', 'adresse_reception', 'adresse'];
 
-    public function utilisateur()
+    // Définir la relation avec le type d'association
+    public function typeOrganisation()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(TypeOrganisation::class);
     }
-
-    public function publications()
+    public function admin()
     {
-        return $this->hasMany(Publication::class);
-    }
-
-    public function translations()
-    {
-        return $this->hasMany(OrganisationTranslation::class);
+        return $this->belongsTo(User::class, 'users_id');
     }
 }

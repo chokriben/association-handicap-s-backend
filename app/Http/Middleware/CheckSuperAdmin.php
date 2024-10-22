@@ -20,7 +20,9 @@ class CheckSuperAdmin
         if ($request->user() && $request->user()->role === 'super_admin') {
             return $next($request);
         }
-
+        if ($request->user() && $request->user()->role === 'administrateur') {
+            return $next($request);
+        }
         return response()->json(['error' => 'Unauthorized'], 403);
     }
 }

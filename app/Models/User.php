@@ -31,6 +31,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'role',
         'status',
         'profile_photo',
+        'is_blocked',
+        'is_active',
         'admin_id'
     ];
     public function organisations()

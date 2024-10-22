@@ -44,7 +44,7 @@ class Kernel extends HttpKernel
             \Illuminate\Routing\Middleware\ThrottleRequests::class . ':api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \Illuminate\Http\Middleware\HandleCors::class,
-           
+
 
         ],
     ];
@@ -71,5 +71,6 @@ class Kernel extends HttpKernel
         'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
 
         'super_admin' => \App\Http\Middleware\CheckSuperAdmin::class,
+        'administrateur' => \App\Http\Middleware\CheckSuperAdmin::class,
     ];
 }

@@ -155,6 +155,37 @@ class AssociationController extends Controller
     }
 
     /**
+ * Filter associations by type_association_id.
+ */
+public function filterByType(Request $request)
+{
+    // Valider que le type d'association est bien fourni et qu'il existe
+    $validatedData = $request->validate([
+        'type_association_id' => 'required|exists:type_associations,id',
+    ]);
+
+    // Récupérer les associations qui correspondent au type fourni
+    $associations = Association::with('translations')
+        ->where('type_association_id', $validatedData['type_association_id'])
+        ->get();
+
+    // Vérifier s'il y a des associations qui correspondent
+    if ($associations->isEmpty()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'No associations found for this type.',
+        ]);
+    }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Associations filtered by type retrieved successfully',
+        'associations' => $associations,
+    ], 200);
+}
+
+
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy($id)

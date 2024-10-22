@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Notifications\UserRejected;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 
 class ApiTokenController extends Controller
 {
@@ -26,8 +27,8 @@ class ApiTokenController extends Controller
         $user->status = 'approved';
 
         // Notifier l'utilisateur que son inscription est approuvée
-        $superAdminName = 'chokri ben mahjoub';
-        $user->notify(new UserApproved($user, $superAdminName));
+       // $superAdminName = 'chokri ben mahjoub';
+      //  $user->notify(new UserApproved($user, $superAdminName));
 
         // Vider le champ plain_password
         $user->plain_password = null;
@@ -50,7 +51,7 @@ class ApiTokenController extends Controller
         $user->save();
 
         // Notifier l'utilisateur que son inscription est rejetée
-        $user->notify(new UserRejected($user));
+       // $user->notify(new UserRejected($user));
 
         return response()->json(['message' => 'User rejected successfully.']);
     }
@@ -144,7 +145,9 @@ class ApiTokenController extends Controller
         if ($user->status !== 'approved') {
             return response()->json(['error' => 'Your account is not approved yet'], 403);
         }
-
+        if ($user->is_blocked) { // Assuming 'is_blocked' is a boolean column in your users table
+            return response()->json(['error' => 'Your account is blocked'], 403);
+        }
         // Generate a new token for the user
         $token = $user->createToken('default')->plainTextToken;
 
@@ -183,6 +186,40 @@ class ApiTokenController extends Controller
         // Retourner une réponse JSON avec la liste des administrateurs
         return response()->json(['administrators' => $administrators], 200);
     }
+
+    public function getPendingsAdministrators()
+    {
+        // Récupérer tous les utilisateurs ayant le rôle d'administrateur et le statut "pending"
+        $administrators = User::where('role', 'administrateur')
+            ->where('status', 'pending') // Filtrer par le statut "pending"
+            ->get();
+
+        // Retourner une réponse JSON avec la liste des administrateurs en attente
+        return response()->json(['administrators' => $administrators], 200);
+    }
+
+    public function getRejectedsAdministrators()
+    {
+        // Récupérer tous les utilisateurs ayant le rôle d'administrateur et le statut "pending"
+        $administrators = User::where('role', 'administrateur')
+            ->where('status', 'rejected') // Filtrer par le statut "pending"
+            ->get();
+
+        // Retourner une réponse JSON avec la liste des administrateurs en attente
+        return response()->json(['administrators' => $administrators], 200);
+    }
+
+    public function getApprovedsAdministrators()
+    {
+        // Récupérer tous les utilisateurs ayant le rôle d'administrateur et le statut "pending"
+        $administrators = User::where('role', 'administrateur')
+            ->where('status', 'approved') // Filtrer par le statut "pending"
+            ->get();
+
+        // Retourner une réponse JSON avec la liste des administrateurs en attente
+        return response()->json(['administrators' => $administrators], 200);
+    }
+
     public function updateProfile(Request $request)
     {
         // Récupérer l'utilisateur authentifié (administrateur)
@@ -194,7 +231,8 @@ class ApiTokenController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'telephone' => 'required|string|max:20',
             'adresse' => 'nullable|string|max:255', // Optionnel, l'adresse peut être nulle
-            'password' => 'nullable|string|min:8|confirmed', // Optionnel, seulement si l'utilisateur veut changer son mot de passe
+            'password' => 'nullable|string|min:8|confirmed',
+            'profile_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048'
         ]);
 
         // Mettre à jour les informations de l'utilisateur
@@ -207,7 +245,21 @@ class ApiTokenController extends Controller
         if ($request->filled('password')) {
             $user->password = Hash::make($request->password);
         }
+        // Si une nouvelle photo de profil est téléchargée, la sauvegarder et mettre à jour le chemin
+        if ($request->hasFile('profile_photo')) {
+            // Supprimer l'ancienne photo si elle existe
+            if ($user->profile_photo) {
+                Storage::delete('public/profile_photos/' . $user->profile_photo);
+            }
 
+            // Enregistrer la nouvelle photo de profil
+            $photo = $request->file('profile_photo');
+            $photoName = time() . '_' . $photo->getClientOriginalName();
+            $photo->storeAs('public/profile_photos', $photoName);
+
+            // Mettre à jour le chemin de la nouvelle photo de profil
+            $user->profile_photo = $photoName;
+        }
         // Sauvegarder les modifications
         $user->save();
 
@@ -401,5 +453,63 @@ class ApiTokenController extends Controller
         ], 401);
     }
 
+    public function unblockMember($id, Request $request)
+    {
+        $admin = $request->user();
+
+        if ($admin->role !== 'administrateur' || $admin->status !== 'approved') {
+            return response()->json(['error' => "Seuls les administrateurs approuvés peuvent débloquer des membres."], 403);
+        }
+
+        $member = User::findOrFail($id);
+
+        if ($member->nom_association !== $admin->nom_association) {
+            return response()->json(['error' => "Vous ne pouvez débloquer que des membres de votre propre association."], 403);
+        }
+
+        if ($member->role !== 'membre') {
+            return response()->json(['error' => "Vous ne pouvez débloquer que des membres."], 403);
+        }
+
+        $member->is_blocked = false;
+        $member->save();
+
+        return response()->json(['message' => 'Le membre a été débloqué avec succès.']);
+    }
+
+
+
+    public function getPendingsMember()
+    {
+        // Récupérer tous les utilisateurs ayant le rôle d'administrateur et le statut "pending"
+        $administrators = User::where('role', 'membre')
+            ->where('status', 'pending') // Filtrer par le statut "pending"
+            ->get();
+
+        // Retourner une réponse JSON avec la liste des administrateurs en attente
+        return response()->json(['administrators' => $administrators], 200);
+    }
+
+    public function getRejectedsMember()
+    {
+        // Récupérer tous les utilisateurs ayant le rôle d'administrateur et le statut "pending"
+        $administrators = User::where('role', 'membre')
+            ->where('status', 'rejected') // Filtrer par le statut "pending"
+            ->get();
+
+        // Retourner une réponse JSON avec la liste des administrateurs en attente
+        return response()->json(['administrators' => $administrators], 200);
+    }
+
+    public function getApprovedsMember()
+    {
+        // Récupérer tous les utilisateurs ayant le rôle d'administrateur et le statut "pending"
+        $administrators = User::where('role', 'membre')
+            ->where('status', 'approved') // Filtrer par le statut "pending"
+            ->get();
+
+        // Retourner une réponse JSON avec la liste des administrateurs en attente
+        return response()->json(['administrators' => $administrators], 200);
+    }
 
 }

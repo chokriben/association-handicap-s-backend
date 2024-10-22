@@ -29,6 +29,8 @@ return new class extends Migration {
             $table->enum('role', ['super_admin', 'administrateur', 'membre', 'visiteur']);
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->string('profile_photo')->nullable();
+            $table->boolean('is_blocked')->default(false);
+            $table->boolean('is_active')->default(true); 
             $table->rememberToken();
             $table->timestamps();
         });

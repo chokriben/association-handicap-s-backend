@@ -9,12 +9,12 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function up()
     {
-        Schema::create('associations', function (Blueprint $table) {
+        Schema::create('organisations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('users_id')->constrained('users')->onDelete('cascade');
-            $table->unsignedBigInteger('type_association_id')->nullable(); 
+            $table->unsignedBigInteger('type_organisation_id')->nullable();
             $table->string('phone')->nullable();
             $table->string('phone_fax')->nullable(); // Utilisez un underscore (_) au lieu du tiret (-)
             $table->string('rip')->nullable();
@@ -23,11 +23,8 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
+    public function down()
     {
-        Schema::dropIfExists('associations');
+        Schema::dropIfExists('organisations');
     }
 };

@@ -5,165 +5,170 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Organisation;
 use App\Models\OrganisationTranslation;
-use Illuminate\Support\Facades\Validator;
+use App\Models\User;
 
 class OrganisationController extends Controller
 {
     /**
-     * Display a listing of the organisations.
-     *
-     * @return \Illuminate\Http\JsonResponse
+     * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Récupérer toutes les organisations avec leurs traductions
-        $organisations = Organisation::with('translations')->get();
+        // Récupérer l'utilisateur connecté
+        $users_id = auth()->id();
 
-        // Retourner les organisations en JSON
-        return response()->json($organisations);
+        if (!$users_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You must be logged in to view Organisations.',
+            ], 401);
+        }
+
+        // Récupérer l'Organisation de l'utilisateur connecté
+        $organisation = Organisation::with('translations')
+            ->where('users_id', $users_id)
+            ->first();
+
+        if (!$organisation) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No Organisation found for this administrator.',
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Organisation retrieved successfully',
+            'Organisation' => $organisation,
+        ], 200);
     }
 
     /**
-     * Store a newly created organisation in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
+     * Store or update the resource in storage.
      */
     public function store(Request $request)
     {
-        // Validate the main fields
-        $validated = $request->validate([
-            'date_creation' => 'required|date',
-            'user_id' => 'required|exists:users,id',
-        ]);
+        $users_id = auth()->id();
 
-        // Créer une nouvelle organisation
-        $organisation = Organisation::create($validated);
-
-        // Retrieve available languages
-        $locales = app(\Astrotomic\Translatable\Locales::class)->all();
-
-        // Validate and store translations
-        foreach ($locales as $locale) {
-            $validator = Validator::make($request->all(), [
-                "nom_$locale" => 'required|string|max:255',
-                "description_$locale" => 'nullable|string',
-                "adresse_reception_$locale" => 'nullable|string',
-                "adresse_locale_$locale" => 'nullable|string',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json(['errors' => $validator->errors()], 422);
-            }
-
-            OrganisationTranslation::create([
-                'locale' => $locale,
-                'organisation_id' => $organisation->id,
-                'nom' => $request->input("nom_$locale"),
-                'description' => $request->input("description_$locale"),
-                'adresse_reception' => $request->input("adresse_reception_$locale"),
-                'adresse_locale' => $request->input("adresse_locale_$locale"),
-            ]);
+        // Vérifiez si l'ID de l'administrateur est fourni
+        if (!$users_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Administrator ID is required to create an Organisation.',
+            ], 400);
         }
 
-        // Retourner l'organisation créée en JSON avec le code de statut 201
-        return response()->json($organisation->load('translations'), 201);
+        // Chercher l'Organisation existante pour cet utilisateur
+        $organisation = Organisation::where('users_id', $users_id)->first();
+
+        // Si l'Organisation n'existe pas, on est en mode création, sinon c'est une mise à jour
+        $emailRule = 'required|email|unique:Organisations,email';
+        if ($organisation) {
+            // Si une Organisation existe, ignorer l'email actuel dans la vérification de l'unicité
+            $emailRule = 'required|email|unique:Organisations,email,' . $organisation->id;
+        }
+
+        // Valider les données de la requête
+        $validatedData = $request->validate([
+            'type_organisation_id' => 'required|exists:type_organisations,id',
+            'phone' => 'nullable|string',
+            'phone_fax' => 'nullable|string',
+            'rip' => 'nullable|string',
+            'email' => $emailRule, // Utiliser la règle dynamique pour l'email
+            'adresse_fr' => 'nullable|string',
+            'adresse_en' => 'nullable|string',
+            'adresse_ar' => 'nullable|string',
+            'adresse_reception_fr' => 'nullable|string',
+            'adresse_reception_en' => 'nullable|string',
+            'adresse_reception_ar' => 'nullable|string',
+            'name_fr' => 'required|string',
+            'name_en' => 'required|string',
+            'name_ar' => 'required|string',
+            'description_fr' => 'nullable|string',
+            'description_en' => 'nullable|string',
+            'description_ar' => 'nullable|string',
+
+            'category_fr' => 'nullable|string',
+            'category_en' => 'nullable|string',
+            'category_ar' => 'nullable|string',
+        ]);
+
+        // Si l'Organisation n'existe pas, créer une nouvelle
+        if (!$organisation) {
+            $organisation = new Organisation();
+        }
+
+        // Affectation des données
+        $organisation->type_organisation_id = $validatedData['type_organisation_id'];
+        $organisation->phone = $validatedData['phone'];
+        $organisation->phone_fax = $validatedData['phone_fax'];
+        $organisation->rip = $validatedData['rip'];
+        $organisation->email = $validatedData['email'];
+        $organisation->users_id = $users_id; // Utiliser l'ID de l'administrateur
+
+        // Gérer les traductions
+        $languages = ['fr', 'en', 'ar'];
+        $fields = ['adresse', 'adresse_reception', 'name', 'description','category'];
+
+        foreach ($languages as $lang) {
+            $nameKey = "name_{$lang}";
+
+            // Vérifier les doublons dans la même locale et l'Organisation
+            $existingTranslation = OrganisationTranslation::where('locale', $lang)
+                ->where('name', $validatedData[$nameKey])
+                ->where('organisation_id', '!=', $organisation->id) // Ignorer l'Organisation actuelle lors de la mise à jour
+                ->first();
+
+            if ($existingTranslation) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "The name '{$validatedData[$nameKey]}' already exists for the '{$lang}' locale."
+                ], 422);
+            }
+
+            // Remplissage des champs traduits après vérification des doublons
+            foreach ($fields as $field) {
+                $fieldKey = "{$field}_{$lang}";
+                $organisation->translateOrNew($lang)->$field = $validatedData[$fieldKey] ?? null;
+            }
+        }
+
+        $organisation->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => $organisation->wasRecentlyCreated ? 'Organisation created successfully!' : 'Organisation updated successfully',
+            'data' => $organisation
+        ], $organisation->wasRecentlyCreated ? 201 : 200);
     }
 
+
+
     /**
-     * Display the specified organisation.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
+     * Display the specified resource.
      */
     public function show($id)
     {
-        // Trouver l'organisation par ID avec ses traductions
-        $organisation = Organisation::with('translations')->find($id);
+        $organisation = Organisation::with('translations')->where('users_id', auth()->id())->findOrFail($id);
 
-        if (!$organisation) {
-            return response()->json(['message' => 'Organisation not found'], 404);
-        }
-
-        // Retourner l'organisation trouvée en JSON
-        return response()->json($organisation);
+        return response()->json([
+            'success' => true,
+            'message' => 'Organisation retrieved successfully',
+            'Organisation' => $organisation,
+        ], 200);
     }
 
     /**
-     * Update the specified organisation in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function update(Request $request, $id)
-    {
-        // Trouver l'organisation par ID
-        $organisation = Organisation::find($id);
-
-        if (!$organisation) {
-            return response()->json(['message' => 'Organisation not found'], 404);
-        }
-
-        // Validate the main fields
-        $validated = $request->validate([
-            'date_creation' => 'sometimes|date',
-            'user_id' => 'sometimes|exists:users,id',
-        ]);
-
-        // Mettre à jour l'organisation
-        $organisation->update($validated);
-
-        // Retrieve available languages
-        $locales = app(\Astrotomic\Translatable\Locales::class)->all();
-
-        // Validate and update translations
-        foreach ($locales as $locale) {
-            $validator = Validator::make($request->all(), [
-                "nom_$locale" => 'required|string|max:255',
-                "description_$locale" => 'nullable|string',
-                "adresse_reception_$locale" => 'nullable|string',
-                "adresse_locale_$locale" => 'nullable|string',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json(['errors' => $validator->errors()], 422);
-            }
-
-            OrganisationTranslation::updateOrCreate(
-                ['locale' => $locale, 'organisation_id' => $organisation->id],
-                [
-                    'nom' => $request->input("nom_$locale"),
-                    'description' => $request->input("description_$locale"),
-                    'adresse_reception' => $request->input("adresse_reception_$locale"),
-                    'adresse_locale' => $request->input("adresse_locale_$locale"),
-                ]
-            );
-        }
-
-        // Retourner l'organisation mise à jour en JSON avec le code de statut 200
-        return response()->json($organisation->load('translations'), 200);
-    }
-
-    /**
-     * Remove the specified organisation from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
+     * Remove the specified resource from storage.
      */
     public function destroy($id)
     {
-        // Trouver l'organisation par ID
-        $organisation = Organisation::find($id);
-
-        if (!$organisation) {
-            return response()->json(['message' => 'Organisation not found'], 404);
-        }
-
-        // Supprimer l'organisation
+        $organisation = Organisation::findOrFail($id);
         $organisation->delete();
 
-        // Retourner une réponse JSON avec un message de succès
-        return response()->json(['message' => 'Organisation deleted successfully']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Organisation deleted successfully',
+        ], 200);
     }
 }
